@@ -5,10 +5,66 @@ import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Server extends JFrame {
+
+    public class MyDB {
+        String url = "jdbc:mysql://localhost/damabom";
+        String user = "root";
+        String password = "2137";
+
+        Connection conn = null;
+        PreparedStatement psm = null;
+        ResultSet rs = null;
+
+        public void connectDB() {
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                conn = DriverManager.getConnection(url, user, password);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void closeDB() {
+            try {
+                if (rs != null) rs.close();
+                if (psm != null) psm.close();
+                if (conn != null) conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // 허기, 기분, 건강 상태 가져오기
+        public int[] getStatusById(String userId) {
+            int[] status = new int[3];
+            connectDB();
+            try {
+                String sql = "SELECT hungry, mood, health FROM dama WHERE id = ?";
+                psm = conn.prepareStatement(sql);
+                psm.setString(1, userId);
+                rs = psm.executeQuery();
+
+                if (rs.next()) {
+                    status[0] = rs.getInt("hungry");
+                    status[1] = rs.getInt("mood");
+                    status[2] = rs.getInt("health");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } finally {
+                //closeDB();
+            }
+            return status;
+        }
+
+    }
+
+    MyDB myDB = new MyDB();
 
     ServerSocket serverSocket = null;
     DataInputStream dis = null;
@@ -18,12 +74,13 @@ public class Server extends JFrame {
     Receiver receiver = new Receiver();
     JTextField sender = new JTextField();
 
-    int hungryNum = 0;
-    int moodNum = 0;
-    int healthNum = 40;
+    int[] status = myDB.getStatusById("user");
+    int hungryNum = status[0];  // 허기
+    int moodNum = status[1];  // 기분
+    int healthNum = status[2];
 
-    public  Server() {
-        setTitle("담아봄");
+    public Server() {
+        setTitle("접속 초기 상태 값");
         setLayout(new BorderLayout());
 
         JPanel statusPanel = new JPanel(new GridBagLayout());
@@ -42,7 +99,7 @@ public class Server extends JFrame {
         statusPanel.add(innerPanel);
         add(statusPanel, BorderLayout.CENTER);
 
-        setSize(200, 270);
+        setSize(300, 270);
         setVisible(true);
 
         // 통신연결 메세지를 입출력 메서드
@@ -118,7 +175,7 @@ public class Server extends JFrame {
 
                     for (Map.Entry<String, String> entry : responseMap.entrySet()) {
                         if (trimmedMsg.contains(entry.getKey())) {
-                            dos.writeUTF("(캐릭터 이름) " + entry.getValue() + "\n");
+                            dos.writeUTF("(도치) " + entry.getValue() + "\n");
                             dos.flush();
                             matched = true;
                             break;
@@ -126,7 +183,7 @@ public class Server extends JFrame {
                     }
 
                     if (!matched) {
-                        dos.writeUTF("(캐릭터 이름) 죄송합니다. 이해하지 못했어요.\n");
+                        dos.writeUTF("(도치) 죄송합니다. 이해하지 못했어요.\n");
                         dos.flush();
                     }
 
@@ -136,6 +193,7 @@ public class Server extends JFrame {
             }
         }
     }
+
 
 
 

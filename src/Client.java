@@ -13,7 +13,7 @@ public class Client extends JFrame {
     public class MyDB {
         String url = "jdbc:mysql://localhost/damabom";
         String user = "root";
-        String password = "2137";
+        String password = "****";
 
         Connection conn = null;
         PreparedStatement psm = null;
@@ -102,13 +102,32 @@ public class Client extends JFrame {
             return damaName;
         }
 
+        // 상태 업데이트 메서드
+        public void updateStatusById(String userId, int hungry, int mood, int health) {
+            connectDB();
+            try {
+                String sql = "UPDATE dama SET hungry = ?, mood = ?, health = ? WHERE id = ?";
+                psm = conn.prepareStatement(sql);
+                psm.setInt(1, hungry);
+                psm.setInt(2, mood);
+                psm.setInt(3, health);
+                psm.setString(4, userId);
+                psm.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } finally {
+                closeDB();
+            }
+        }
+
     }
+
 
     private final CardLayout cardLayout;
     private final JPanel cardPanel;
 
     public Client() throws UnknownHostException {
-        setTitle("담아봄");
+        setTitle("업데이트 되는 상태 값");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         cardLayout = new CardLayout();
@@ -121,12 +140,13 @@ public class Client extends JFrame {
         add(cardPanel);
         cardLayout.show(cardPanel, "login");
 
-        setSize(1000, 800);
+        setSize(800, 600);
         setVisible(true);
     }
 
+
     MyDB myDB = new MyDB();
-    String loginUserId = null;
+    String loginUserId = "user";
 
     // 로그인 패널
     private class LoginPanel extends JPanel {
@@ -160,7 +180,6 @@ public class Client extends JFrame {
 
                 if (myDB.checkLogin(id, pw)) {  // 로그인 성공
                     cardLayout.show(cardPanel, "loginSuccess");
-                    loginUserId = id;
                 } else {
                     JOptionPane.showMessageDialog(this, "아이디와 비밀번호를 다시 확인해주세요.");
                 }
@@ -176,7 +195,7 @@ public class Client extends JFrame {
 
     // 로그인 성공 화면 패널
     private class LoginSuccess extends JPanel {
-        int[] status = myDB.getStatusById("user2");
+        int[] status = myDB.getStatusById(loginUserId);
         int hungryNum = status[0];  // 허기
         int moodNum = status[1];  // 기분
         int healthNum = status[2];  // 건강
@@ -248,6 +267,7 @@ public class Client extends JFrame {
             feedBtn.addActionListener(e -> {
                 hungryNum += 5;
                 hungry.setText("허기 " + hungryNum);
+                myDB.updateStatusById(loginUserId, hungryNum, moodNum, healthNum);
                 try {
                     dos.writeUTF("밥주기");
                     dos.flush();
@@ -260,6 +280,7 @@ public class Client extends JFrame {
             playBtn.addActionListener(e -> {
                 moodNum += 5;
                 mood.setText("기분 " + moodNum);
+                myDB.updateStatusById(loginUserId, hungryNum, moodNum, healthNum);
                 try {
                     dos.writeUTF("놀아주기");
                     dos.flush();
@@ -272,6 +293,7 @@ public class Client extends JFrame {
             hospitalBtn.addActionListener(e -> {
                 healthNum += 5;
                 health.setText("건강 " + healthNum);
+                myDB.updateStatusById(loginUserId, hungryNum, moodNum, healthNum);
                 try {
                     dos.writeUTF("병원가기");
                     dos.flush();
@@ -282,23 +304,6 @@ public class Client extends JFrame {
 
             setSize(200, 270);
             setVisible(true);
-        }
-    }
-
-    private class Receiver extends JTextArea implements Runnable {
-        @Override
-        public void run() {
-            String msg = null;
-            while (true) {
-                try {
-                    msg = dis.readUTF();
-                } catch (IOException e){
-                    e.printStackTrace();
-                }
-                append(msg);
-                int pos = this.getText().length();
-                setCaretPosition(pos);
-            }
         }
     }
 
